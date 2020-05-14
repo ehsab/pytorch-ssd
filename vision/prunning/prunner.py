@@ -27,7 +27,7 @@ class ModelPrunner:
 
     def _make_new_conv(self, conv, filter_index, channel_type="out"):
         if not isinstance(conv, nn.Conv2d):
-            raise TypeError(f"The module is not Conv2d, but {type(conv)}.")
+            raise TypeError("The module is not Conv2d, but {type(conv)}.")
 
         if channel_type == "out":
             new_conv = nn.Conv2d(conv.in_channels, conv.out_channels - 1, conv.kernel_size, conv.stride,
@@ -47,12 +47,12 @@ class ModelPrunner:
             if conv.bias is not None:
                 new_conv.bias.data = conv.bias.data
         else:
-            raise ValueError(f"{channel_type} should be either 'in' or 'out'.")
+            raise ValueError("{channel_type} should be either 'in' or 'out'.")
         return new_conv
 
     def remove_conv_filter(self, path, filter_index):
         conv = self.book.get_module(path)
-        logging.info(f'Prune Conv: {"/".join(path)}, Filter: {filter_index}, Layer: {conv}')
+        logging.info('Prune Conv: {"/".join(path)}, Filter: {filter_index}, Layer: {conv}')
         new_conv = self._make_new_conv(conv, filter_index, channel_type="out")
         self._update_model(path, new_conv)
 
@@ -101,7 +101,7 @@ class ModelPrunner:
             if linear.bias is not None:
                 new_linear.bias.data = linear.bias.data
         else:
-            raise ValueError(f"{channel_type} should be either 'in' or 'out'.")
+            raise ValueError("{channel_type} should be either 'in' or 'out'.")
         return new_linear
 
     def prune_conv_layers(self, num=1):
@@ -216,7 +216,7 @@ class ModelPrunner:
 
     def remove_linear_feature(self, path, feature_index):
         linear = self.book.get_module(path)
-        logging.info(f'Prune Linear: {"/".join(path)}, Filter: {feature_index}, Layer: {linear}')
+        logging.info('Prune Linear: {"/".join(path)}, Filter: {feature_index}, Layer: {linear}')
         new_linear = self._make_new_linear(linear, feature_index, channel_type="out")
         self._update_model(path, new_linear)
 

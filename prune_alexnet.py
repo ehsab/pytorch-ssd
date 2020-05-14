@@ -187,8 +187,8 @@ if __name__ == '__main__':
 
     train_dataset = datasets.ImageFolder(args.dataset, train_transform)
     val_dataset = datasets.ImageFolder(args.validation_dataset, val_transform)
-    logging.info(f"Training dataset size: {len(train_dataset)}.")
-    logging.info(f"Validation Dataset size: {len(val_dataset)}.")
+    logging.info("Training dataset size: {len(train_dataset)}.")
+    logging.info("Validation Dataset size: {len(val_dataset)}.")
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=len(val_dataset), shuffle=False, num_workers=1)
@@ -202,15 +202,15 @@ if __name__ == '__main__':
         prunner = ModelPrunner(net, lambda model: train_epoch(model, prunner_data_iter),
                                ignored_paths=[('classifier', '6')])  # do not prune the last layer.
         num_filters = prunner.book.num_of_conv2d_filters()
-        logging.info(f"Number of Conv2d filters: {num_filters}")
+        logging.info("Number of Conv2d filters: {num_filters}")
 
         num_linear_filters = prunner.book.num_of_linear_filters()
-        logging.info(f"Number of Linear filters: {num_linear_filters}")
+        logging.info("Number of Linear filters: {num_linear_filters}")
         if args.prune_conv:
             prune_num = prunner.book.num_of_conv2d_filters() - 5 * (prunner.book.num_of_conv2d_modules())
         else:
             prune_num = prunner.book.num_of_linear_filters() - 5 * (prunner.book.num_of_linear_modules())
-        logging.info(f"Number of Layers to Prune: {prune_num}")
+        logging.info("Number of Layers to Prune: {prune_num}")
         i = 0
         iteration = 0
         train_data_iter = iter(make_prunner_loader(train_dataset))
@@ -225,7 +225,7 @@ if __name__ == '__main__':
                 i += args.prune_linear_num
             if iteration % 10 == 0:
                 val_loss, val_accuracy = eval(prunner.model, val_loader)
-                logging.info(f"Prune: {i}/{prune_num}, After Pruning Evaluation Accuracy:{val_accuracy:.4f}.")
+                logging.info("Prune: {i}/{prune_num}, After Pruning Evaluation Accuracy:{val_accuracy:.4f}.")
             val_loss, val_accuracy = train_epoch(prunner.model, train_data_iter, args.num_recovery_batches, optimizer)
             for name, param in net.named_parameters():
                 writer.add_histogram(name, param.clone().cpu().data.numpy(), 10)
@@ -233,11 +233,11 @@ if __name__ == '__main__':
                 dummy_input = torch.rand(1, 3, 224, 224)
                 writer.add_graph(net, dummy_input)
                 val_loss, val_accuracy = eval(prunner.model, val_loader)
-                logging.info(f"Prune: {i}/{prune_num}, After Recovery Evaluation Accuracy:{val_accuracy:.4f}.")
-                logging.info(f"Prune: {i}/{prune_num}, Iteration: {iteration}, Save model.")
-                with open(f"models/alexnet-pruned-{i}.txt", "w") as f:
+                logging.info("Prune: {i}/{prune_num}, After Recovery Evaluation Accuracy:{val_accuracy:.4f}.")
+                logging.info("Prune: {i}/{prune_num}, Iteration: {iteration}, Save model.")
+                with open("models/alexnet-pruned-{i}.txt", "w") as f:
                     print(prunner.model, file=f)
-                torch.save(prunner.model.state_dict(), f"models/prunned-alexnet-{i}-{prune_num}-{val_accuracy:.4f}.pth")
+                torch.save(prunner.model.state_dict(), "models/prunned-alexnet-{i}-{prune_num}-{val_accuracy:.4f}.pth")
             iteration += 1
     else:
         logging.fatal("You should specify --prune_conv, --prune_linear or --train.")

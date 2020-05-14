@@ -58,7 +58,7 @@ class OpenImagesDataset:
         return image
 
     def _read_data(self):
-        annotation_file = f"{self.root}/sub-{self.dataset_type}-annotations-bbox.csv"
+        annotation_file = "{self.root}/sub-{self.dataset_type}-annotations-bbox.csv"
         annotations = pd.read_csv(annotation_file)
         class_names = ['BACKGROUND'] + sorted(list(annotations['ClassName'].unique()))
         class_dict = {class_name: i for i, class_name in enumerate(class_names)}
@@ -85,15 +85,15 @@ class OpenImagesDataset:
                     class_name = self.class_names[class_index]
                     self.class_stat[class_name] += 1
         content = ["Dataset Summary:"
-                   f"Number of Images: {len(self.data)}",
-                   f"Minimum Number of Images for a Class: {self.min_image_num}",
+                   "Number of Images: {len(self.data)}",
+                   "Minimum Number of Images for a Class: {self.min_image_num}",
                    "Label Distribution:"]
         for class_name, num in self.class_stat.items():
-            content.append(f"\t{class_name}: {num}")
+            content.append("\t{class_name}: {num}")
         return "\n".join(content)
 
     def _read_image(self, image_id):
-        image_file = self.root / self.dataset_type / f"{image_id}.jpg"
+        image_file = self.root / self.dataset_type / "{image_id}.jpg"
         image = cv2.imread(str(image_file))
         if image.shape[2] == 1:
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)

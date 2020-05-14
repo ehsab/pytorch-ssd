@@ -90,7 +90,7 @@ class VOCDataset:
         return ids
 
     def _get_annotation(self, image_id):
-        annotation_file = self.root / f"Annotations/{image_id}.xml"
+        annotation_file = self.root / "Annotations/{image_id}.xml"
         objects = ET.parse(annotation_file).findall("object")
         boxes = []
         labels = []
@@ -117,7 +117,7 @@ class VOCDataset:
                 np.array(is_difficult, dtype=np.uint8))
 
     def _read_image(self, image_id):
-        image_file = self.root / f"JPEGImages/{image_id}.jpg"
+        image_file = self.root / "JPEGImages/{image_id}.jpg"
         image = cv2.imread(str(image_file))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         return image

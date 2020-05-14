@@ -19,26 +19,26 @@ s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 def download(bucket, root, retry, counter, lock, path):
     i = 0
     src = path
-    dest = f"{root}/{path}"
+    dest = "{root}/{path}"
     while i < retry:
         try:
             if not os.path.exists(dest):
                 s3.download_file(bucket, src, dest)
             else:
-                logging.info(f"{dest} already exists.")
+                logging.info("{dest} already exists.")
             with lock:
                 counter.value += 1
                 if counter.value % 100 == 0:
-                    logging.warning(f"Downloaded {counter.value} images.")
+                    logging.warning("Downloaded {counter.value} images.")
             return
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == "404":
-                logging.warning(f"The file s3://{bucket}/{src} does not exist.")
+                logging.warning("The file s3://{bucket}/{src} does not exist.")
                 return
             i += 1
-            logging.warning(f"Sleep {i} and try again.")
+            logging.warning("Sleep {i} and try again.")
             time.sleep(i)
-    logging.warning(f"Failed to download the file s3://{bucket}/{src}. Exception: {e}")
+    logging.warning("Failed to download the file s3://{bucket}/{src}. Exception: {e}")
 
 
 def batch_download(bucket, file_paths, root, num_workers=10, retry=10):
@@ -61,7 +61,7 @@ def http_download(url, path):
 
 def log_counts(values):
     for k, count in values.value_counts().iteritems():
-        logging.warning(f"{k}: {count}/{len(values)} = {count/len(values):.2f}.")
+        logging.warning("{k}: {count}/{len(values)} = {count/len(values):.2f}.")
 
 
 def parse_args():
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     class_description_file = os.path.join(args.root, "class-descriptions-boxable.csv")
     if not os.path.exists(class_description_file):
         url = "https://storage.googleapis.com/openimages/2018_04/class-descriptions-boxable.csv"
-        logging.warning(f"Download {url}.")
+        logging.warning("Download {url}.")
         http_download(url, class_description_file)
 
     class_descriptions = pd.read_csv(class_description_file,
@@ -133,12 +133,12 @@ if __name__ == '__main__':
         image_dir = os.path.join(args.root, dataset_type)
         os.makedirs(image_dir, exist_ok=True)
 
-        annotation_file = f"{args.root}/{dataset_type}-annotations-bbox.csv"
+        annotation_file = "{args.root}/{dataset_type}-annotations-bbox.csv"
         if not os.path.exists(annotation_file):
-            url = f"https://storage.googleapis.com/openimages/2018_04/{dataset_type}/{dataset_type}-annotations-bbox.csv"
-            logging.warning(f"Download {url}.")
+            url = "https://storage.googleapis.com/openimages/2018_04/{dataset_type}/{dataset_type}-annotations-bbox.csv"
+            logging.warning("Download {url}.")
             http_download(url, annotation_file)
-        logging.warning(f"Read annotation file {annotation_file}")
+        logging.warning("Read annotation file {annotation_file}")
         annotations = pd.read_csv(annotation_file)
         annotations = pd.merge(annotations, class_descriptions,
                                left_on="LabelName", right_on="id",
@@ -166,19 +166,19 @@ if __name__ == '__main__':
             annotations = annotations.loc[~(annotations['ImageID'].isin(set(images_with_group)) & (annotations['IsGroupOf'] == 0)), :]
         annotations = annotations.sample(frac=1.0)
 
-        logging.warning(f"{dataset_type} bounding boxes size: {annotations.shape[0]}")
+        logging.warning("{dataset_type} bounding boxes size: {annotations.shape[0]}")
         logging.warning("Approximate Image Stats: ")
         log_counts(annotations.drop_duplicates(["ImageID", "ClassName"])["ClassName"])
         logging.warning("Label distribution: ")
         log_counts(annotations['ClassName'])
 
-        logging.warning(f"Shuffle dataset.")
+        logging.warning("Shuffle dataset.")
 
 
-        sub_annotation_file = f"{args.root}/sub-{dataset_type}-annotations-bbox.csv"
-        logging.warning(f"Save {dataset_type} data to {sub_annotation_file}.")
+        sub_annotation_file = "{args.root}/sub-{dataset_type}-annotations-bbox.csv"
+        logging.warning("Save {dataset_type} data to {sub_annotation_file}.")
         annotations.to_csv(sub_annotation_file, index=False)
-        image_files.extend(f"{dataset_type}/{id}.jpg" for id in set(annotations['ImageID']))
-    logging.warning(f"Start downloading {len(image_files)} images.")
+        image_files.extend("{dataset_type}/{id}.jpg" for id in set(annotations['ImageID']))
+    logging.warning("Start downloading {len(image_files)} images.")
     batch_download(bucket, image_files, args.root, args.num_workers, args.retry)
     logging.warning("Task Done.")
