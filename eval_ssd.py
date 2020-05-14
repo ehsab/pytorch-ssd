@@ -1,19 +1,20 @@
+import argparse
+import logging
+import sys
+
+import numpy as np
+import pathlib
 import torch
-from vision.ssd.vgg_ssd import create_vgg_ssd, create_vgg_ssd_predictor
+
+from vision.datasets.open_images import OpenImagesDataset
+from vision.datasets.voc_dataset import VOCDataset
+from vision.ssd.mobilenet_v2_ssd_lite import create_mobilenetv2_ssd_lite, create_mobilenetv2_ssd_lite_predictor
 from vision.ssd.mobilenetv1_ssd import create_mobilenetv1_ssd, create_mobilenetv1_ssd_predictor
 from vision.ssd.mobilenetv1_ssd_lite import create_mobilenetv1_ssd_lite, create_mobilenetv1_ssd_lite_predictor
 from vision.ssd.squeezenet_ssd_lite import create_squeezenet_ssd_lite, create_squeezenet_ssd_lite_predictor
-from vision.datasets.voc_dataset import VOCDataset
-from vision.datasets.open_images import OpenImagesDataset
+from vision.ssd.vgg_ssd import create_vgg_ssd, create_vgg_ssd_predictor
 from vision.utils import box_utils, measurements
 from vision.utils.misc import str2bool, Timer
-import argparse
-import pathlib
-import numpy as np
-import logging
-import sys
-from vision.ssd.mobilenet_v2_ssd_lite import create_mobilenetv2_ssd_lite, create_mobilenetv2_ssd_lite_predictor
-
 
 parser = argparse.ArgumentParser(description="SSD Evaluation on VOC Dataset.")
 parser.add_argument('--net', default="vgg16-ssd",
@@ -55,7 +56,7 @@ def group_annotation_by_class(dataset):
                 all_gt_boxes[class_index][image_id] = []
             all_gt_boxes[class_index][image_id].append(gt_box)
             if class_index not in all_difficult_cases:
-                all_difficult_cases[class_index]={}
+                all_difficult_cases[class_index] = {}
             if image_id not in all_difficult_cases[class_index]:
                 all_difficult_cases[class_index][image_id] = []
             all_difficult_cases[class_index][image_id].append(difficult)
@@ -144,12 +145,12 @@ if __name__ == '__main__':
     else:
         logging.fatal("The net type is wrong. It should be one of vgg16-ssd, mb1-ssd and mb1-ssd-lite.")
         parser.print_help(sys.stderr)
-        sys.exit(1)  
+        sys.exit(1)
 
     timer.start("Load Model")
     net.load(args.trained_model)
     net = net.to(DEVICE)
-    print(f'It took {timer.end("Load Model")} seconds to load the model.')
+    print('It took {timer.end("Load Model")} seconds to load the model.')
     if args.net == 'vgg16-ssd':
         predictor = create_vgg_ssd_predictor(net, nms_method=args.nms_method, device=DEVICE)
     elif args.net == 'mb1-ssd':
@@ -157,7 +158,7 @@ if __name__ == '__main__':
     elif args.net == 'mb1-ssd-lite':
         predictor = create_mobilenetv1_ssd_lite_predictor(net, nms_method=args.nms_method, device=DEVICE)
     elif args.net == 'sq-ssd-lite':
-        predictor = create_squeezenet_ssd_lite_predictor(net,nms_method=args.nms_method, device=DEVICE)
+        predictor = create_squeezenet_ssd_lite_predictor(net, nms_method=args.nms_method, device=DEVICE)
     elif args.net == 'mb2-ssd-lite':
         predictor = create_mobilenetv2_ssd_lite_predictor(net, nms_method=args.nms_method, device=DEVICE)
     else:
@@ -184,7 +185,7 @@ if __name__ == '__main__':
     results = torch.cat(results)
     for class_index, class_name in enumerate(class_names):
         if class_index == 0: continue  # ignore background
-        prediction_path = eval_path / f"det_test_{class_name}.txt"
+        prediction_path = eval_path / "det_test_{class_name}.txt"
         with open(prediction_path, "w") as f:
             sub = results[results[:, 1] == class_index, :]
             for i in range(sub.size(0)):
@@ -199,7 +200,7 @@ if __name__ == '__main__':
     for class_index, class_name in enumerate(class_names):
         if class_index == 0:
             continue
-        prediction_path = eval_path / f"det_test_{class_name}.txt"
+        prediction_path = eval_path / "det_test_{class_name}.txt"
         ap = compute_average_precision_per_class(
             true_case_stat[class_index],
             all_gb_boxes[class_index],
@@ -209,9 +210,6 @@ if __name__ == '__main__':
             args.use_2007_metric
         )
         aps.append(ap)
-        print(f"{class_name}: {ap}")
+        print("{class_name}: {ap}")
 
-    print(f"\nAverage Precision Across All Classes:{sum(aps)/len(aps)}")
-
-
-
+    print("\nAverage Precision Across All Classes:{sum(aps)/len(aps)}")
