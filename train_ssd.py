@@ -130,10 +130,10 @@ def train(loader, net, criterion, optimizer, device, debug_steps=100, epoch=-1):
             avg_reg_loss = running_regression_loss / debug_steps
             avg_clf_loss = running_classification_loss / debug_steps
             logging.info(
-                "Epoch: {epoch}, Step: {i}, " +
-                "Average Loss: {avg_loss:.4f}, " +
-                "Average Regression Loss {avg_reg_loss:.4f}, " +
-                "Average Classification Loss: {avg_clf_loss:.4f}"
+                "Epoch: {}, Step: {}, ".format(epoch, i) +
+                "Average Loss: {:.4f}, ".format(avg_loss) +
+                "Average Regression Loss {:.4f}, ".format(avg_reg_loss) +
+                "Average Classification Loss: {:.4f}".format(avg_clf_loss)
             )
             running_loss = 0.0
             running_regression_loss = 0.0
@@ -212,9 +212,9 @@ if __name__ == '__main__':
             num_classes = len(dataset.class_names)
 
         else:
-            raise ValueError("Dataset type {args.dataset_type} is not supported.")
+            raise ValueError("Dataset type {} is not supported.".format(args.dataset_type))
         datasets.append(dataset)
-    logging.info("Stored labels into file {label_file}.")
+    logging.info("Stored labels into file {}.".format(label_file))
     train_dataset = ConcatDataset(datasets)
     logging.info("Train dataset size: {}".format(len(train_dataset)))
     train_loader = DataLoader(train_dataset, args.batch_size,
@@ -277,15 +277,15 @@ if __name__ == '__main__':
 
     timer.start("Load Model")
     if args.resume:
-        logging.info("Resume from the model {args.resume}")
+        logging.info("Resume from the model {}".format(args.resume))
         net.load(args.resume)
     elif args.base_net:
-        logging.info("Init from base net {args.base_net}")
+        logging.info("Init from base net {}".format(args.base_net))
         net.init_from_base_net(args.base_net)
     elif args.pretrained_ssd:
-        logging.info("Init from pretrained ssd {args.pretrained_ssd}")
+        logging.info("Init from pretrained ssd {}".format(args.pretrained_ssd))
         net.init_from_pretrained_ssd(args.pretrained_ssd)
-    logging.info('Took {timer.end("Load Model"):.2f} seconds to load the model.')
+    logging.info('Took {:.2f} seconds to load the model.'.format(timer.end("Load Model")))
 
     net.to(DEVICE)
 
@@ -293,8 +293,8 @@ if __name__ == '__main__':
                              center_variance=0.1, size_variance=0.2, device=DEVICE)
     optimizer = torch.optim.SGD(params, lr=args.lr, momentum=args.momentum,
                                 weight_decay=args.weight_decay)
-    logging.info("Learning rate: {args.lr}, Base net learning rate: {base_net_lr}, "
-                 + "Extra Layers learning rate: {extra_layers_lr}.")
+    logging.info("Learning rate: {}, Base net learning rate: {}, ".format(args.lr, base_net_lr)
+                 + "Extra Layers learning rate: {}.".format(extra_layers_lr))
 
     if args.scheduler == 'multi-step':
         logging.info("Uses MultiStepLR scheduler.")
@@ -305,11 +305,11 @@ if __name__ == '__main__':
         logging.info("Uses CosineAnnealingLR scheduler.")
         scheduler = CosineAnnealingLR(optimizer, args.t_max, last_epoch=last_epoch)
     else:
-        logging.fatal("Unsupported Scheduler: {args.scheduler}.")
+        logging.fatal("Unsupported Scheduler: {}.".format(args.scheduler))
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    logging.info("Start training from epoch {last_epoch + 1}.")
+    logging.info("Start training from epoch {}.".format(last_epoch + 1))
     for epoch in range(last_epoch + 1, args.num_epochs):
         scheduler.step()
         train(train_loader, net, criterion, optimizer,
@@ -318,11 +318,12 @@ if __name__ == '__main__':
         if epoch % args.validation_epochs == 0 or epoch == args.num_epochs - 1:
             val_loss, val_regression_loss, val_classification_loss = test(val_loader, net, criterion, DEVICE)
             logging.info(
-                "Epoch: {epoch}, " +
-                "Validation Loss: {val_loss:.4f}, " +
-                "Validation Regression Loss {val_regression_loss:.4f}, " +
-                "Validation Classification Loss: {val_classification_loss:.4f}"
+                "Epoch: {}, ".format(epoch) +
+                "Validation Loss: {:.4f}, ".format(val_loss) +
+                "Validation Regression Loss {:.4f}, ".format(val_regression_loss) +
+                "Validation Classification Loss: {:.4f}.".format(val_classification_loss)
             )
-            model_path = os.path.join(args.checkpoint_folder, "{args.net}-Epoch-{epoch}-Loss-{val_loss}.pth")
+            model_path = os.path.join(args.checkpoint_folder,
+                                      "{}-Epoch-{}-Loss-{}.pth".format(args.net, epoch, val_loss))
             net.save(model_path)
-            logging.info("Saved model {model_path}")
+            logging.info("Saved model {}".format(model_path))
