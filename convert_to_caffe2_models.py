@@ -35,7 +35,7 @@ else:
     print("The net type is wrong. It should be one of vgg16-ssd, mb1-ssd and mb1-ssd-lite.")
     sys.exit(1)
 net.load(model_path)
-net.eval()
+net.ssd_eval()
 
 model_path = "models/{net_type}.onnx"
 init_net_path = "models/{net_type}_init_net.pb"

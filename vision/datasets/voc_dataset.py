@@ -5,10 +5,15 @@ import xml.etree.ElementTree as ET
 import cv2
 import os
 
+VOC_CLASS_NAMES = {'BACKGROUND', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus',
+                   'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike',
+                   'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'}
+
 
 class VOCDataset:
 
-    def __init__(self, root, transform=None, target_transform=None, is_test=False, keep_difficult=False, label_file=None):
+    def __init__(self, root, transform=None, target_transform=None, is_test=False, keep_difficult=False,
+                 label_file=None):
         """Dataset for VOC data.
         Args:
             root: the root of the VOC2007 or VOC2012 dataset, the directory contains the following sub-directories:
@@ -27,30 +32,29 @@ class VOCDataset:
         # if the labels file exists, read in the class names
         label_file_name = self.root / "labels.txt"
 
-        if os.path.isfile(label_file_name):
+        if os.path.isfile(str(label_file_name)):
             class_string = ""
             with open(label_file_name, 'r') as infile:
                 for line in infile:
                     class_string += line.rstrip()
 
             # classes should be a comma separated list
-            
+
             classes = class_string.split(',')
             # prepend BACKGROUND as first class
             classes.insert(0, 'BACKGROUND')
-            classes  = [ elem.replace(" ", "") for elem in classes]
+            classes = [elem.replace(" ", "") for elem in classes]
             self.class_names = tuple(classes)
             logging.info("VOC Labels read from file: " + str(self.class_names))
 
         else:
             logging.info("No labels file, using default VOC classes.")
             self.class_names = ('BACKGROUND',
-            'aeroplane', 'bicycle', 'bird', 'boat',
-            'bottle', 'bus', 'car', 'cat', 'chair',
-            'cow', 'diningtable', 'dog', 'horse',
-            'motorbike', 'person', 'pottedplant',
-            'sheep', 'sofa', 'train', 'tvmonitor')
-
+                                'aeroplane', 'bicycle', 'bird', 'boat',
+                                'bottle', 'bus', 'car', 'cat', 'chair',
+                                'cow', 'diningtable', 'dog', 'horse',
+                                'motorbike', 'person', 'pottedplant',
+                                'sheep', 'sofa', 'train', 'tvmonitor')
 
         self.class_dict = {class_name: i for i, class_name in enumerate(self.class_names)}
 
@@ -84,14 +88,14 @@ class VOCDataset:
     @staticmethod
     def _read_image_ids(image_sets_file):
         ids = []
-        with open(image_sets_file) as f:
+        with open(str(image_sets_file)) as f:
             for line in f:
                 ids.append(line.rstrip())
         return ids
 
     def _get_annotation(self, image_id):
-        annotation_file = self.root / "Annotations/{image_id}.xml"
-        objects = ET.parse(annotation_file).findall("object")
+        annotation_file = self.root / "Annotations/{}.xml".format(image_id)
+        objects = ET.parse(str(annotation_file)).findall("object")
         boxes = []
         labels = []
         is_difficult = []
@@ -117,10 +121,7 @@ class VOCDataset:
                 np.array(is_difficult, dtype=np.uint8))
 
     def _read_image(self, image_id):
-        image_file = self.root / "JPEGImages/{image_id}.jpg"
+        image_file = self.root / "JPEGImages/{}.jpg".format(image_id)
         image = cv2.imread(str(image_file))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         return image
-
-
-

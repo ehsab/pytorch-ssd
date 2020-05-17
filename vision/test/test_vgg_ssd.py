@@ -13,7 +13,7 @@ def test_forward():
     for num_classes in [2]:
         net = create_vgg_ssd(num_classes)
         net.init()
-        net.eval()
+        net.ssd_eval()
         x = torch.randn(2, 3, 300, 300)
         confidences, locations = net.forward(x)
         assert confidences.size() == torch.Size([2, 8732, num_classes])
@@ -37,8 +37,8 @@ def test_save_load_model_consistency():
     net_copy = create_vgg_ssd(20)
     net_copy.load(model_path)
 
-    net.eval()
-    net_copy.eval()
+    net.ssd_eval()
+    net_copy.ssd_eval()
 
     for _ in range(1):
         x = torch.randn(1, 3, 300, 300)

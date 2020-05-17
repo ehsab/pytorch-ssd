@@ -22,6 +22,7 @@ from vision.ssd.squeezenet_ssd_lite import create_squeezenet_ssd_lite
 from vision.ssd.ssd import MatchPrior
 from vision.ssd.vgg_ssd import create_vgg_ssd
 from vision.utils.misc import str2bool, Timer, freeze_net_layers, store_labels
+from voc_wrapper import get_vgg16_ssd
 
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Training With Pytorch')
@@ -286,6 +287,8 @@ if __name__ == '__main__':
         logging.info("Init from pretrained ssd {}".format(args.pretrained_ssd))
         net.init_from_pretrained_ssd(args.pretrained_ssd)
     logging.info('Took {:.2f} seconds to load the model.'.format(timer.end("Load Model")))
+
+    net = get_vgg16_ssd(pretrained=True, is_test=False)
 
     net.to(DEVICE)
 

@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import sys
 
 import numpy as np
@@ -24,7 +25,6 @@ parser.add_argument("--trained_model", type=str)
 parser.add_argument("--dataset_type", default="voc", type=str,
                     help='Specify dataset type. Currently support voc and open_images.')
 parser.add_argument("--dataset", type=str, help="The root directory of the VOC dataset or Open Images dataset.")
-parser.add_argument("--label_file", type=str, help="The label file path.")
 parser.add_argument("--use_cuda", type=str2bool, default=True)
 parser.add_argument("--use_2007_metric", type=str2bool, default=True)
 parser.add_argument("--nms_method", type=str, default="hard")
@@ -72,7 +72,7 @@ def group_annotation_by_class(dataset):
 
 def compute_average_precision_per_class(num_true_cases, gt_boxes, difficult_cases,
                                         prediction_file, iou_threshold, use_2007_metric):
-    with open(prediction_file) as f:
+    with open(str(prediction_file)) as f:
         image_ids = []
         boxes = []
         scores = []
@@ -120,18 +120,71 @@ def compute_average_precision_per_class(num_true_cases, gt_boxes, difficult_case
         return measurements.compute_average_precision(precision, recall)
 
 
-if __name__ == '__main__':
+def ssd_eval(predictor, dataset, data_path, class_names):
+    true_case_stat, all_gb_boxes, all_difficult_cases = group_annotation_by_class(dataset)
+    results = []
+    for i in range(len(dataset)):
+        image = dataset.get_image(i)
+        boxes, labels, probs = predictor.predict(image)
+        # print("Prediction: {:4f} seconds.".format(timer.end("Predict")))
+        indexes = torch.ones(labels.size(0), 1, dtype=torch.float32) * i
+        results.append(torch.cat([
+            indexes.reshape(-1, 1),
+            labels.reshape(-1, 1).float(),
+            probs.reshape(-1, 1),
+            boxes + 1.0  # matlab's indexes start from 1
+        ], dim=1))
+    results = torch.cat(results)
+    for class_index, class_name in enumerate(class_names):
+        if class_index == 0: continue  # ignore background
+        prediction_path = os.path.join(data_path, "det_test_{}.txt".format(class_name))
+        with open(str(prediction_path), "w") as f:
+            sub = results[results[:, 1] == class_index, :]
+            for i in range(sub.size(0)):
+                prob_box = sub[i, 2:].numpy()
+                image_id = dataset.ids[int(sub[i, 0])]
+                print(
+                    image_id + " " + " ".join([str(v) for v in prob_box]),
+                    file=f
+                )
+    aps = []
+    results = {}
+    # print("\n\nAverage Precision Per-class:")
+    for class_index, class_name in enumerate(class_names):
+        if class_index == 0:
+            continue
+        prediction_path = os.path.join(data_path, "det_test_{}.txt".format(class_name))
+        ap = compute_average_precision_per_class(
+            true_case_stat[class_index],
+            all_gb_boxes[class_index],
+            all_difficult_cases[class_index],
+            prediction_path,
+            args.iou_threshold,
+            args.use_2007_metric
+        )
+        aps.append(ap)
+        # print("{}: {}".format(class_name, ap))
+        results[class_name] = ap
+
+    results['mAP'] = sum(aps) / len(aps)
+    # print("\nAverage Precision Across All Classes:{}".format(sum(aps) / len(aps)))
+    return results
+
+
+def main():
     eval_path = pathlib.Path(args.eval_dir)
     eval_path.mkdir(exist_ok=True)
     timer = Timer()
-    class_names = [name.strip() for name in open(args.label_file).readlines()]
+    class_names = {'BACKGROUND', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus',
+                   'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike',
+                   'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'}
 
     if args.dataset_type == "voc":
         dataset = VOCDataset(args.dataset, is_test=True)
     elif args.dataset_type == 'open_images':
         dataset = OpenImagesDataset(args.dataset, dataset_type="test")
 
-    true_case_stat, all_gb_boxes, all_difficult_cases = group_annotation_by_class(dataset)
+    # true_case_stat, all_gb_boxes, all_difficult_cases = group_annotation_by_class(dataset)
     if args.net == 'vgg16-ssd':
         net = create_vgg_ssd(len(class_names), is_test=True)
     elif args.net == 'mb1-ssd':
@@ -166,50 +219,56 @@ if __name__ == '__main__':
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    results = []
-    for i in range(len(dataset)):
-        print("process image", i)
-        timer.start("Load Image")
-        image = dataset.get_image(i)
-        print("Load Image: {:4f} seconds.".format(timer.end("Load Image")))
-        timer.start("Predict")
-        boxes, labels, probs = predictor.predict(image)
-        print("Prediction: {:4f} seconds.".format(timer.end("Predict")))
-        indexes = torch.ones(labels.size(0), 1, dtype=torch.float32) * i
-        results.append(torch.cat([
-            indexes.reshape(-1, 1),
-            labels.reshape(-1, 1).float(),
-            probs.reshape(-1, 1),
-            boxes + 1.0  # matlab's indexes start from 1
-        ], dim=1))
-    results = torch.cat(results)
-    for class_index, class_name in enumerate(class_names):
-        if class_index == 0: continue  # ignore background
-        prediction_path = eval_path / "det_test_{class_name}.txt"
-        with open(prediction_path, "w") as f:
-            sub = results[results[:, 1] == class_index, :]
-            for i in range(sub.size(0)):
-                prob_box = sub[i, 2:].numpy()
-                image_id = dataset.ids[int(sub[i, 0])]
-                print(
-                    image_id + " " + " ".join([str(v) for v in prob_box]),
-                    file=f
-                )
-    aps = []
-    print("\n\nAverage Precision Per-class:")
-    for class_index, class_name in enumerate(class_names):
-        if class_index == 0:
-            continue
-        prediction_path = eval_path / "det_test_{class_name}.txt"
-        ap = compute_average_precision_per_class(
-            true_case_stat[class_index],
-            all_gb_boxes[class_index],
-            all_difficult_cases[class_index],
-            prediction_path,
-            args.iou_threshold,
-            args.use_2007_metric
-        )
-        aps.append(ap)
-        print("{class_name}: {ap}")
+    print(ssd_eval(predictor=predictor, dataset=dataset, data_path=eval_path, class_names=class_names))
 
-    print("\nAverage Precision Across All Classes:{sum(aps)/len(aps)}")
+    # results = []
+    # for i in range(len(dataset)):
+    #     # print("process image", i)
+    #     # timer.start("Load Image")
+    #     image = dataset.get_image(i)
+    #     # print("Load Image: {:4f} seconds.".format(timer.end("Load Image")))
+    #     # timer.start("Predict")
+    #     boxes, labels, probs = predictor.predict(image)
+    #     # print("Prediction: {:4f} seconds.".format(timer.end("Predict")))
+    #     indexes = torch.ones(labels.size(0), 1, dtype=torch.float32) * i
+    #     results.append(torch.cat([
+    #         indexes.reshape(-1, 1),
+    #         labels.reshape(-1, 1).float(),
+    #         probs.reshape(-1, 1),
+    #         boxes + 1.0  # matlab's indexes start from 1
+    #     ], dim=1))
+    # results = torch.cat(results)
+    # for class_index, class_name in enumerate(class_names):
+    #     if class_index == 0: continue  # ignore background
+    #     prediction_path = eval_path / "det_test_{}.txt".format(class_name)
+    #     with open(str(prediction_path), "w") as f:
+    #         sub = results[results[:, 1] == class_index, :]
+    #         for i in range(sub.size(0)):
+    #             prob_box = sub[i, 2:].numpy()
+    #             image_id = dataset.ids[int(sub[i, 0])]
+    #             print(
+    #                 image_id + " " + " ".join([str(v) for v in prob_box]),
+    #                 file=f
+    #             )
+    # aps = []
+    # print("\n\nAverage Precision Per-class:")
+    # for class_index, class_name in enumerate(class_names):
+    #     if class_index == 0:
+    #         continue
+    #     prediction_path = eval_path / "det_test_{}.txt".format(class_name)
+    #     ap = compute_average_precision_per_class(
+    #         true_case_stat[class_index],
+    #         all_gb_boxes[class_index],
+    #         all_difficult_cases[class_index],
+    #         prediction_path,
+    #         args.iou_threshold,
+    #         args.use_2007_metric
+    #     )
+    #     aps.append(ap)
+    #     print("{}: {}".format(class_name, ap))
+    #
+    # print("\nAverage Precision Across All Classes:{}".format(sum(aps) / len(aps)))
+
+
+if __name__ == '__main__':
+    main()

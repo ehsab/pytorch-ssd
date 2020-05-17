@@ -129,7 +129,7 @@ def train(net, train_loader, val_loader, num_epochs, learning_rate, save_model=T
 
 
 def eval(net, loader):
-    net.eval()
+    net.ssd_eval()
     criterion = nn.CrossEntropyLoss()
     running_loss = 0.0
     running_corrects = 0
